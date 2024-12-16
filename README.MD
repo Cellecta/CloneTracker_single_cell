@@ -75,15 +75,35 @@ umi_tools extract \
 Run the following Python script to select the best-quality sequence for each UMI:
 
 ```bash
-python best_sequence_umi.py
+python best_sequence_umi.py -i /path/to/10X_cellecta_cloneracker_barcode_NGS_fastqs/Sample1_CTB/Sample1_CTB_S7_R2_001_extracted.fastq.gz -o cell_umi.tsv
 ```
 
 # Step 4: Assign Clonetracker Barcodes to 10X Cell Barcodes
 
-Use this script to map Clonetracker barcodes to cell barcodes:
+Without reverse complementary of BC14 and BC30 sequence, please run below command.
 
 ```bash
-python barcode_process_umi_5.py
+python barcode_process_umi_5.py \
+  --cell_umi cell_umi.tsv \
+  --bc14_file BC14_barcode_file.txt \
+  --bc30_file BC30_barcode_file.txt \
+  --whitelist whitelist.tsv \
+  --output barcode_assignment_umi_5.tsv \
+  --umi_cutoff 5
+
+```
+
+With reverse complementary of BC14 and BC30 sequence, please run below command.
+
+```bash
+python barcode_process_umi_5.py \
+  --cell_umi cell_umi.tsv \
+  --bc14_file Cellecta-CloneTrackerXP-5M-Pool1-BC14-LNGS-300-Library-Design.txt \
+  --bc30_file Cellecta-CloneTrackerXP-50M-BC30-LNGS-300-Library-Design.txt \
+  --whitelist whitelist.tsv \
+  --output barcode_assignment_5.tsv \
+  --umi_cutoff 5
+  --rc
 ```
 
 # Step 5: Final Barcode Assignment Using UMI Distribution
@@ -91,7 +111,11 @@ python barcode_process_umi_5.py
 Perform the final barcode assignment based on UMI distribution and criteria:
 
 ```bash
-python umi_distribution_analysis_umi_5.py
+python barcode_final_assignment.py --input barcode_assignment_umi_5.tsv \
+                 --bc14 Cellecta-CloneTrackerXP-5M-Pool1-BC14-LNGS-300-Library-Design.tsv \
+                 --bc30 Cellecta-CloneTrackerXP-50M-BC30-LNGS-300-Library-Design.tsv \
+                 --rc \
+                 --output barcode_assignment_summary.tsv
 ```
 
 # Conclusion

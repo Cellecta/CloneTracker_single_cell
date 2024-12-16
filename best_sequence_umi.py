@@ -1,28 +1,57 @@
+import argparse
 from Bio import SeqIO
 from collections import defaultdict
 import gzip
 
-fastq_file_path = "AD_FBP1_S7_R2_001_extracted.fastq.gz"
-
-# Dictionary to store sequences and their frequencies for each UMI
-umi_sequences = defaultdict(lambda: defaultdict(int))
+# Function to extract UMI from the record description
 def extract_umi_from_header(header_str):
-    return header_str.split('_')[1]+header_str.split('_')[2].split(' ')[0]
+    parts = header_str.split('_')
+    return parts[1] + parts[2].split(' ')[0]
 
-# Iterate over each record in the FASTQ file
-with gzip.open(fastq_file_path, "rt") as handle:
-    for record in SeqIO.parse(handle, "fastq"):
-        # Extract UMI from the header or wherever it's located in your specific data
-        umi = extract_umi_from_header(record.description)
+# Main function
+def main(args):
+    # Dictionary to store sequences and their frequencies for each UMI
+    umi_sequences = defaultdict(lambda: defaultdict(int))
+    
+    # Parse the FASTQ file and count sequences for each UMI
+    with gzip.open(args.input, "rt") as handle:
+        for record in SeqIO.parse(handle, "fastq"):
+            # Extract UMI from the header
+            umi = extract_umi_from_header(record.description)
+            
+            # Count occurrences of each sequence for the given UMI
+            umi_sequences[umi][record.seq] += 1
+
+    # Identify the most frequent sequence for each UMI
+    best_sequences = {
+        umi: max(sequences, key=sequences.get)
+        for umi, sequences in umi_sequences.items()
+    }
+
+    # Write the results to a tab-delimited file
+    with open(args.output, "w") as output:
+        # Write the header
+        output.write("cell_umi\tseq\treads_count\n")
         
-        # Count occurrences of each sequence for the given UMI
-        umi_sequences[umi][record.seq] += 1
+        # Write UMI, best sequence, and read counts
+        for umi, best_sequence in best_sequences.items():
+            counts = umi_sequences[umi][best_sequence]
+            output.write(f"{umi}\t{best_sequence}\t{counts}\n")
 
-# Find the best sequence (highest frequency) for each UMI
-best_sequences = {umi: max(sequences, key=sequences.get) for umi, sequences in umi_sequences.items()}
-output = open("cell_umi.xls", 'w')
-output.write('cell_umi'+'\t'+'seq'+'\t'+'reads_count'+'\n')
-for umi, best_sequence in best_sequences.items():
-    counts = umi_sequences[umi][best_sequence]
-    output.write(str(umi)+'\t'+str(best_sequence)+'\t'+str(counts)+'\n')
-output.close()
+    print(f"Output written to {args.output}")
+
+# Argument parser
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Process a FASTQ file to extract UMIs and determine the most frequent sequences.")
+    parser.add_argument(
+        "-i", "--input", 
+        required=True, 
+        help="Path to the input FASTQ file (gzip compressed)."
+    )
+    parser.add_argument(
+        "-o", "--output", 
+        required=True, 
+        help="Path to the output TSV file."
+    )
+    args = parser.parse_args()
+    main(args)
