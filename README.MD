@@ -24,7 +24,8 @@ The input data for this workflow includes:
 - **FASTQ files from the Cellecta Clonetracker barcode NGS library:**
   - `/path/to/10X_cellecta_cloneracker_barcode_NGS_fastqs/Sample1_CTB/Sample1_CTB_S7_R1_001.fastq.gz`
   - `/path/to/10X_cellecta_cloneracker_barcode_NGS_fastqs/Sample1_CTB/Sample1_CTB_S7_R2_001.fastq.gz`
-- **Reference barcode sequences provided by Cellecta(Please choose correct barcode file based on your purchased clonetracker barcode library kit and pool):**
+- **Reference barcode sequences provided by Cellecta:**
+  - Please ensure you select the correct barcode file based on the CloneTracker barcode library kit and pool you purchased.
   - `Cellecta-CloneTrackerXP-5M-Pool1-BC14-LNGS-300-Library-Design.txt`
   - `Cellecta-CloneTrackerXP-50M-BC30-LNGS-300-Library-Design.txt`
 
