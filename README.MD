@@ -88,7 +88,7 @@ python barcode_process_umi_5.py \
   --cell_umi cell_umi.tsv \
   --bc14_file BC14_barcode_file.txt \
   --bc30_file BC30_barcode_file.txt \
-  --whitelist whitelist.tsv \
+  --whitelist Sample1_barcode_cleaned.tsv \
   --output barcode_assignment_umi_5.tsv \
   --umi_cutoff 5
 
@@ -103,7 +103,7 @@ python barcode_process_umi_5.py \
   --bc30_file Cellecta-CloneTrackerXP-50M-BC30-LNGS-300-Library-Design.txt \
   --whitelist whitelist.tsv \
   --output barcode_assignment_5.tsv \
-  --umi_cutoff 5
+  --umi_cutoff 5 \
   --rc
 ```
 
