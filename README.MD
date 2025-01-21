@@ -29,7 +29,7 @@ The input data for this workflow includes:
   - `Cellecta-CloneTrackerXP-5M-Pool1-BC14-LNGS-300-Library-Design.txt`
   - `Cellecta-CloneTrackerXP-50M-BC30-LNGS-300-Library-Design.txt`
 
-# Step 1: Load Reference Barcode Sequences
+# Step 1: Analyze Gene Expression Profiling NGS data and extract cell barcodes 
 
 Analyze Gene Expression Profiling NGS data and extract cell barcodes using `cellranger count`:
 
