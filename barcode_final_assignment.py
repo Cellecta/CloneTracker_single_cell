@@ -15,7 +15,7 @@ def load_barcode_file(filename, reverse_complement=False):
     Load barcode sequences and IDs from a file. Optionally reverse complement sequences.
     """
     data = pd.read_csv(filename, sep='\t')
-    sequences = data['BC14 sequence'] if 'BC14 sequence' in data else data['BC30 sequence']
+    sequences = data['BC sequence'] if 'BC14 sequence' in data else data['BC sequence']
     ids = data['#BC14 ID'] if '#BC14 ID' in data else data['#BC30 ID']
 
     if reverse_complement:
@@ -110,7 +110,7 @@ def main(args):
     data['bc_type'] = data.apply(lambda x: bc_type(x['bc14'], x['bc30']), axis=1)
     data_sorted = data.sort_values(by=['cell', 'umi'], ascending=[False, False])
     data_sorted['barcode_name'] = data_sorted.apply(
-        lambda x: barcode_name(x['bc14'], x['bc30'], bc14_dict, bc30_dict, x['R2 sequence']), axis=1
+        lambda x: barcode_name(x['bc14'], x['bc30'], bc14_dict, bc30_dict, x['R2_sequence']), axis=1
     )
 
     # Group and assign final barcodes

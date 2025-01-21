@@ -81,7 +81,7 @@ python best_sequence_umi.py -i /path/to/10X_cellecta_cloneracker_barcode_NGS_fas
 
 # Step 4: Assign Clonetracker Barcodes to 10X Cell Barcodes
 
-Here, we used a cutoff of 5 UMIs. However, based on our real data, a cutoff of 2 UMIs provides better accuracy, though it requires a longer computation time. I recommend starting with 5 UMIs to ensure everything functions correctly, and then proceeding with 2 UMIs for CloneTracker barcode assignment.  
+Here, we used a cutoff of 5 UMIs. This is the first algorithm we used to assign clonetracker barcode. It is time comsumming, we hope we can develop a better algorithm to assign clonetracker barcode.
 
 Without reverse complementary of BC14 and BC30 sequence, please run below command.
 
@@ -104,7 +104,7 @@ python barcode_process_umi_5.py \
   --bc14_file Cellecta-CloneTrackerXP-5M-Pool1-BC14-LNGS-300-Library-Design.txt \
   --bc30_file Cellecta-CloneTrackerXP-50M-BC30-LNGS-300-Library-Design.txt \
   --whitelist Sample1_barcode_cleaned.tsv \
-  --output barcode_assignment_5.tsv \
+  --output barcode_assignment_umi_5.tsv \
   --umi_cutoff 5 \
   --rc
 ```

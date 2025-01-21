@@ -1,5 +1,4 @@
-Type	Count	
-One Barcode	3918	0.65727227
-One Barcode with mutant	22	0.003690656
-multi_barcode	1804	0.302633786
-Undetermined due to low UMI	74	0.012414024
+Type	Count
+One Barcode	3901
+One Barcode with mutant	22
+multi_barcode	1932
