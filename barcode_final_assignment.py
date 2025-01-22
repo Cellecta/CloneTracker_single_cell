@@ -117,11 +117,12 @@ def main(args):
     data_umi = data_sorted.groupby('cell')['umi'].apply(list).reset_index(name='umi')
     data_barcode = data_sorted.groupby('cell')['barcode_name'].apply(list).reset_index(name='barcode')
     data_final = data_umi.merge(data_barcode, on='cell', how='left')
+    data_final.to_csv('test.csv', index=False)
 
     data_final['final_assigned_barcode'] = data_final.apply(
         lambda x: final_assigned_barcode_func(x['barcode'], x['umi']), axis=1
     )
-    data_final['umi_count'] = data_final['umi'].apply(len)
+    data_final['umi_count'] = data_final['umi'].apply(max)
     data_final['barcode_type'] = data_final['final_assigned_barcode'].apply(final_assigned_type)
 
     # Generate visualizations
