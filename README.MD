@@ -111,6 +111,7 @@ python barcode_process_umi_5.py \
 
 # Step 4: Optional for sgRNA assignment if you follow Cellecta 10X 3' sgRNA NGS library preparation protocols
 This script is design to assign sgRNA to each 10X cell barcode. Top1 sgRNA UMI count > 50%*(total UMI count)
+Please prepare feature reference file based on your own sgRNA library. Current script is used to detect sgRNA+TTTT (pattern in 10X sgRNA NGS library fastq R2)
 
 ```bash
 python sgRNA_assignment.py -t feature_reference.csv \
