@@ -113,7 +113,7 @@ python barcode_process_umi_5.py \
 This script is design to assign sgRNA to each 10X cell barcode. Top1 sgRNA UMI count > 50%*(total UMI count)
 
 ```bash
-python sgRNA_assignment.py -t reference_target.csv \
+python sgRNA_assignment.py -t feature_reference.csv \
   -i cell_umi.tsv \
   -o sgRNA_assignment.csv 
 ```
