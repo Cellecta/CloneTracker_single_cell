@@ -134,3 +134,5 @@ python barcode_final_assignment.py --input barcode_assignment_umi_5.tsv \
 # Conclusion
 
 This workflow provides a systematic approach to process Cellecta Clonetracker single-cell data, assign barcodes, and analyze barcode distributions. Scripts and parameters can be adjusted based on dataset-specific requirements. By following these steps, you can ensure accurate and reproducible results for your analysis.
+Below a new github repo to process single cell clonetracker barcode library
+https://github.com/sahoo00/Clonetracker
