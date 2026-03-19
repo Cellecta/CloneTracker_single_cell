@@ -39,9 +39,9 @@ After installing the repo with `pip install .`, the package exposes:
 
 Convenience Python launchers live under `scripts/`:
 
-- `scripts/run_pipeline.py`
-- `scripts/clonetracker_batch.py`
-- `scripts/scRNAseq_QC.py`
+- `scripts/run_full_pipeline.py`
+- `scripts/run_clonetracker_batch.py`
+- `scripts/run_scrnaseq_qc.py`
 
 ## Full pipeline concept
 
@@ -57,10 +57,9 @@ It then runs:
 2. CloneTracker barcode assignment for barcode FASTQs
 3. Final QC/reporting that joins the CellRanger and CloneTracker outputs
 
-If the repo contains `scripts/best_sequence_umi.py`,
-`scripts/barcode_process_umi_5.py`, and
-`scripts/barcode_final_assignment_50M.py`, those helper scripts are used by
-default.
+If the repo contains `scripts/extract_best_umi_sequences.py`,
+`scripts/process_barcode_umis.py`, and
+`scripts/assign_final_barcodes.py`, those helper scripts are used by default.
 
 See [docs/full_pipeline_usage.md](docs/full_pipeline_usage.md) for the current
 command shape.

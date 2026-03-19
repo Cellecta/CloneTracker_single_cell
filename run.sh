@@ -1,4 +1,4 @@
-python scripts/run_pipeline.py \
+python scripts/run_full_pipeline.py \
   --samples-csv examples/pipeline_samples_test.csv \
   --pipeline-root /mnt/d/Project/Clonetracker/103951/tests \
   --cellranger-bin /mnt/d/Project/Software/cellranger-10.0.0/cellranger \

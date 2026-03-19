@@ -1,10 +1,10 @@
 # Full Pipeline Usage
 
 The prototype pipeline can be launched from either the installed CLI or the
-`scripts/` convenience wrapper. Because `scripts/best_sequence_umi.py`,
-`scripts/barcode_process_umi_5.py`, and
-`scripts/barcode_final_assignment_50M.py` are present in the repo, the
-pipeline uses them automatically unless you override the paths.
+`scripts/` convenience wrapper. Because
+`scripts/extract_best_umi_sequences.py`, `scripts/process_barcode_umis.py`,
+and `scripts/assign_final_barcodes.py` are present in the repo, the pipeline
+uses them automatically unless you override the paths.
 
 The checked-in example CSVs currently reference the `Control` sample only,
 because that is the dataset available in the repository `data/` folder.
@@ -27,7 +27,7 @@ cellecta-full-pipeline \
 ## Wrapper script
 
 ```bash
-python scripts/run_pipeline.py \
+python scripts/run_full_pipeline.py \
   --samples-csv examples/pipeline_samples.csv \
   --pipeline-root /path/to/run_output \
   --transcriptome /path/to/refdata-gex-GRCh38-2024-A \

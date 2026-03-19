@@ -435,7 +435,7 @@ def main() -> None:
 
     if IMPORT_ERROR is not None:
         raise ModuleNotFoundError(
-            "Required dependencies for scRNAseq_QC.py are not installed. "
+            "Required dependencies for run_scrnaseq_qc.py are not installed. "
             "Install matplotlib, numpy, pandas, and scanpy to run QC."
         ) from IMPORT_ERROR
 

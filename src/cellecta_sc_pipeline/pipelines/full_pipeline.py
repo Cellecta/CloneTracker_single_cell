@@ -29,9 +29,9 @@ def resolve_local_helper(filename: str) -> Path:
     return candidates[1]
 
 
-BEST_SEQUENCE_DEFAULT = resolve_local_helper("best_sequence_umi.py")
-BARCODE_PROCESS_DEFAULT = resolve_local_helper("barcode_process_umi_5.py")
-FINAL_ASSIGNMENT_DEFAULT = resolve_local_helper("barcode_final_assignment_50M.py")
+BEST_SEQUENCE_DEFAULT = resolve_local_helper("extract_best_umi_sequences.py")
+BARCODE_PROCESS_DEFAULT = resolve_local_helper("process_barcode_umis.py")
+FINAL_ASSIGNMENT_DEFAULT = resolve_local_helper("assign_final_barcodes.py")
 
 
 def local_tool_arg(parser: argparse.ArgumentParser, flag: str, default_path: Path, help_text: str) -> None:
@@ -58,9 +58,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--include-introns", default="false", choices=["true", "false"], help="Pass through to cellranger count --include-introns")
     parser.add_argument("--bc14-file", required=True, help="BC14 reference file")
     parser.add_argument("--bc30-file", required=True, help="BC30 reference file")
-    local_tool_arg(parser, "--best-sequence-umi-py", BEST_SEQUENCE_DEFAULT, "Path to best_sequence_umi.py")
-    local_tool_arg(parser, "--barcode-process-py", BARCODE_PROCESS_DEFAULT, "Path to barcode_process_umi_5.py")
-    local_tool_arg(parser, "--final-assignment-py", FINAL_ASSIGNMENT_DEFAULT, "Path to barcode_final_assignment_50M.py")
+    local_tool_arg(parser, "--best-sequence-umi-py", BEST_SEQUENCE_DEFAULT, "Path to extract_best_umi_sequences.py")
+    local_tool_arg(parser, "--barcode-process-py", BARCODE_PROCESS_DEFAULT, "Path to process_barcode_umis.py")
+    local_tool_arg(parser, "--final-assignment-py", FINAL_ASSIGNMENT_DEFAULT, "Path to assign_final_barcodes.py")
     parser.add_argument("--bc-pattern", default="CCCCCCCCCCCCCCCCNNNNNNNNNNNN", help="umi_tools extract barcode pattern")
     parser.add_argument(
         "--barcode-search-umi-cutoff",
