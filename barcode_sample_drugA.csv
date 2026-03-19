@@ -1,2 +1,0 @@
-sample,fastq_dir,cellranger_barcodes_gz
-drugA,/mnt/project/Cellecta_scCRISPR/103951_Revmed/data/drugA_CellectaBC_trimmed,/mnt/project/Cellecta_scCRISPR/103951_Revmed/drugA_GEX/outs/filtered_feature_bc_matrix/barcodes.tsv.gz
