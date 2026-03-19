@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cellecta-sc-pipeline"
+version = "0.1.0"
+description = "Customer-facing example pipelines for Cellecta CloneTracker barcode and CRISPR single-cell analysis."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "Cellecta" }
+]
+dependencies = [
+  "matplotlib>=3.8,<4",
+  "numpy>=1.26,<3",
+  "pandas>=2.2,<3",
+  "scanpy>=1.10,<2",
+  "umi-tools>=1.1.5,<2",
+]
+
+[project.scripts]
+cellecta-full-pipeline = "cellecta_sc_pipeline.pipelines.full_pipeline:main"
+cellecta-clonetracker-batch = "cellecta_sc_pipeline.pipelines.clonetracker.batch:main"
+cellecta-scrnaseq-qc = "cellecta_sc_pipeline.shared.scrnaseq_qc:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

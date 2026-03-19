@@ -1,0 +1,22 @@
+.tmp/
+__pycache__/
+*.pyc
+
+# Local references, FASTQs, and other large runtime assets.
+data/
+
+# Local pipeline outputs and scratch runs.
+test_file/
+test_run/
+test_run2/
+test_run3/
+nohup.out
+outs.cell_qc_metrics.tsv
+
+# Heavy local test fixtures generated from CellRanger runs.
+tests/cellranger/
+
+# Large archived reference bundles kept only for local use.
+CONFIG files - JSON-20260310T223427Z-1-001.zip
+Design files - TXT-20260310T223413Z-1-001.zip
+Design files - TXT-20260310T223413Z-1-001/

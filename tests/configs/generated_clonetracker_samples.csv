@@ -1,0 +1,2 @@
+sample,fastq_dir,cellranger_barcodes_gz
+Control,/mnt/d/Project/Clonetracker/103951/data/Control_CellectaBC_trimmed,/mnt/d/Project/Clonetracker/103951/tests/cellranger/Control_GEX/outs/filtered_feature_bc_matrix/barcodes.tsv.gz
