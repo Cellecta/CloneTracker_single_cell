@@ -1,5 +1,10 @@
 # Scripts
 
-This folder is available for future convenience launchers and environment
-wrappers. The existing shell scripts at the repository root are kept as-is for
-now because this is still a test workspace.
+This folder contains convenience launchers and helper scripts that support the
+customer-facing pipeline workspace.
+
+Current contents include:
+
+- Python wrapper entrypoints such as `run_pipeline.py`
+- CloneTracker helper scripts used by the packaged workflow
+- Environment helpers such as `run_docker_wsl.sh`

@@ -3,12 +3,12 @@ import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from cellecta_sc_pipeline.pipelines.full_pipeline import main
+from cellecta_sc_pipeline.pipelines.clonetracker.batch import main
 
 
 if __name__ == "__main__":

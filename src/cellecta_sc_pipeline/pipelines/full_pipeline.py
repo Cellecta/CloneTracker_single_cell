@@ -15,9 +15,13 @@ def resolve_local_helper(filename: str) -> Path:
     """Resolve helper scripts from common source and installed-package locations."""
     candidates = [
         Path.cwd() / filename,
+        Path.cwd() / "scripts" / filename,
         SOURCE_REPO_ROOT / filename,
+        SOURCE_REPO_ROOT / "scripts" / filename,
         Path(sys.executable).resolve().parent.parent / filename,
+        Path(sys.executable).resolve().parent.parent / "scripts" / filename,
         Path('/app') / filename,
+        Path('/app') / "scripts" / filename,
     ]
     for candidate in candidates:
         if candidate.exists():

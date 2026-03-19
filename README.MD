@@ -37,11 +37,11 @@ After installing the repo with `pip install .`, the package exposes:
 - `cellecta-clonetracker-batch`
 - `cellecta-scrnaseq-qc`
 
-The root-level launchers remain available for convenience during prototyping:
+Convenience Python launchers live under `scripts/`:
 
-- `run_pipeline.py`
-- `clonetracker_batch.py`
-- `scRNAseq_QC.py`
+- `scripts/run_pipeline.py`
+- `scripts/clonetracker_batch.py`
+- `scripts/scRNAseq_QC.py`
 
 ## Full pipeline concept
 
@@ -57,8 +57,10 @@ It then runs:
 2. CloneTracker barcode assignment for barcode FASTQs
 3. Final QC/reporting that joins the CellRanger and CloneTracker outputs
 
-If the repo root contains `best_sequence_umi.py`, `barcode_process_umi_5.py`,
-and `barcode_final_assignment_50M.py`, those helper scripts are used by default.
+If the repo contains `scripts/best_sequence_umi.py`,
+`scripts/barcode_process_umi_5.py`, and
+`scripts/barcode_final_assignment_50M.py`, those helper scripts are used by
+default.
 
 See [docs/full_pipeline_usage.md](docs/full_pipeline_usage.md) for the current
 command shape.
@@ -151,7 +153,7 @@ cellecta-full-pipeline \
   --assignment-min-top-umi 3
 ```
 
-For a WSL-first Docker launch, use [scripts/run_docker_wsl.sh](/d:/Project/Clonetracker/103951/scripts/run_docker_wsl.sh).
+For a WSL-first Docker launch, use [run_docker_wsl.sh](/mnt/d/Project/Clonetracker/CloneTracker_single_cell/scripts/run_docker_wsl.sh).
 
 The checked-in example sample sheet currently references only the `Control`
 dataset, because that is the data present under `data/` in this workspace.
