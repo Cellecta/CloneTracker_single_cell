@@ -1,104 +1,104 @@
-# Cellecta Single-Cell Pipeline Prototype
+# Cellecta Single-Cell Pipeline
 
-This repository is a customer-facing example workspace for Cellecta single-cell
-analysis projects. The long-term target is a unified package that supports:
+This repository provides a customer-facing workspace for running Cellecta
+single-cell analysis workflows, with a current focus on CloneTracker barcode
+assignment, QC, and end-to-end processing from FASTQ inputs.
 
-- CloneTracker barcode assignment and QC
-- CRISPR single-cell workflows
-- Shared reporting, configuration, and helper utilities
-- Docker-based execution for reproducible customer runs
+## What This Repository Supports
 
-## Current layout
+- `cellranger count` orchestration for gene expression libraries
+- CloneTracker barcode assignment from barcode FASTQs
+- QC and reporting that combine CellRanger and CloneTracker outputs
+- WSL- and Docker-friendly execution patterns
+
+## Repository Layout
 
 ```text
 configs/                          Example and future runtime configuration
-docs/                             Notes about architecture and pipeline design
-examples/                         Small example inputs and usage patterns
+docs/                             Usage notes and architecture details
+examples/                         Example sample sheets
 scripts/                          Convenience launchers and helper scripts
-src/cellecta_sc_pipeline/         Reusable Python package
-tests/                            Future automated tests
+src/cellecta_sc_pipeline/         Installable Python package
+tests/                            Lightweight test/config scaffolding
 ```
 
-## Python package layout
+## Installable Commands
 
-```text
-src/cellecta_sc_pipeline/
-  pipelines/
-    clonetracker/
-    crispr/
-  shared/
-```
-
-## Installable CLI commands
-
-After installing the repo with `pip install .`, the package exposes:
+After installing with `pip install .`, the package exposes:
 
 - `cellecta-full-pipeline`
 - `cellecta-clonetracker-batch`
 - `cellecta-scrnaseq-qc`
 
-Convenience Python launchers live under `scripts/`:
+Convenience wrappers are also available under `scripts/`:
 
 - `scripts/run_full_pipeline.py`
 - `scripts/run_clonetracker_batch.py`
 - `scripts/run_scrnaseq_qc.py`
 
-## Full pipeline concept
+## Workflow Summary
 
-The end-to-end pipeline expects one sample sheet with:
+The full pipeline expects a sample sheet with:
 
 - `sample`
 - `gex_fastq_dir`
 - `clonetracker_fastq_dir`
 
-It then runs:
+It then performs:
 
-1. `cellranger count` for gene expression FASTQs
-2. CloneTracker barcode assignment for barcode FASTQs
-3. Final QC/reporting that joins the CellRanger and CloneTracker outputs
+1. `cellranger count` for each gene expression library
+2. CloneTracker barcode assignment using the filtered CellRanger barcodes
+3. QC and reporting that join GEX outputs and CloneTracker assignments
 
-If the repo contains `scripts/extract_best_umi_sequences.py`,
-`scripts/process_barcode_umis.py`, and
-`scripts/assign_final_barcodes.py`, those helper scripts are used by default.
+The packaged workflow automatically uses these helper scripts from `scripts/`
+unless you override them explicitly:
 
-See [docs/full_pipeline_usage.md](docs/full_pipeline_usage.md) for the current
-command shape.
+- `extract_best_umi_sequences.py`
+- `process_barcode_umis.py`
+- `assign_final_barcodes.py`
 
-## Local installation
+For command details, see [docs/full_pipeline_usage.md](docs/full_pipeline_usage.md).
+
+## Quick Start
 
 ```bash
 python -m pip install --upgrade pip
 python -m pip install .
 ```
 
-## Docker plan
+Dry-run the full pipeline with the bundled example sample sheet:
 
-A starter `Dockerfile` is included so this repo can evolve into a containerized
-customer delivery. The current image installs the Python package and helper
-scripts, but it does not bundle 10x Genomics `cellranger`.
+```bash
+cellecta-full-pipeline \
+  --samples-csv examples/pipeline_samples.csv \
+  --pipeline-root /path/to/run_output \
+  --transcriptome /path/to/refdata-gex-GRCh38-2024-A \
+  --bc14-file /path/to/Cellecta-CloneTrackerXP-50M-BC14-LNGS-300-Library-Design.txt \
+  --bc30-file /path/to/Cellecta-CloneTrackerXP-50M-BC30-LNGS-300-Library-Design.txt \
+  --barcode-search-umi-cutoff 0 \
+  --assignment-min-total-umi 3 \
+  --assignment-min-top-umi 3 \
+  --dry-run
+```
 
-That means the Docker image is ready today for:
+The checked-in example sample sheets currently target the `Control` dataset
+available in this workspace.
+
+## Docker
+
+The included `Dockerfile` installs the package and helper scripts, but it does
+not bundle 10x Genomics `cellranger`. That makes the image suitable for:
 
 - CloneTracker barcode processing
 - QC/report generation
 - Full-pipeline dry runs
-- Full-pipeline runs where `cellranger` is provided separately
+- Full-pipeline runs where `cellranger` is mounted or provided separately
 
-Typical mounted paths should look like:
+Typical mounted locations:
 
 - `/work/input`
 - `/work/output`
 - `/work/refs`
-- `/work/config`
-
-## WSL-focused usage
-
-The primary target runtime is now WSL/Linux. In practice that means:
-
-- run the package from an Ubuntu shell in WSL
-- use Linux-style mount paths like `/mnt/d/...`
-- prefer Docker commands launched from WSL rather than PowerShell
-- pass Linux paths to `cellranger`, FASTQ folders, references, and output roots
 
 Example build:
 
@@ -106,7 +106,7 @@ Example build:
 docker build -t cellecta-sc-pipeline .
 ```
 
-Example full-pipeline run:
+Example run:
 
 ```bash
 docker run --rm \
@@ -121,38 +121,25 @@ docker run --rm \
   --bc30-file /work/refs/Cellecta-CloneTrackerXP-50M-BC30-LNGS-300-Library-Design.txt
 ```
 
-Example CloneTracker-only run from the same image:
+## WSL Usage
+
+For WSL, use Linux-style paths from your Ubuntu shell and prefer running Docker
+from WSL rather than PowerShell.
+
+Example:
 
 ```bash
-docker run --rm \
-  --entrypoint cellecta-clonetracker-batch \
-  -v /path/to/input:/work/input \
-  -v /path/to/output:/work/output \
-  cellecta-sc-pipeline \
-  --samples_csv /work/input/generated_clonetracker_samples.csv \
-  --out_root /work/output/clonetracker \
-  --bc14_file /work/input/Cellecta-CloneTrackerXP-50M-BC14-LNGS-300-Library-Design.txt \
-  --bc30_file /work/input/Cellecta-CloneTrackerXP-50M-BC30-LNGS-300-Library-Design.txt
-```
-
-Example WSL launch:
-
-```bash
-python -m pip install .
-
 cellecta-full-pipeline \
-  --samples-csv /mnt/d/Project/Clonetracker/103951/examples/pipeline_samples.csv \
-  --pipeline-root /mnt/d/Project/Clonetracker/103951/test_run_wsl \
+  --samples-csv /mnt/d/Project/Clonetracker/CloneTracker_single_cell/examples/pipeline_samples.csv \
+  --pipeline-root /mnt/d/Project/Clonetracker/CloneTracker_single_cell/test_run_wsl \
   --cellranger-bin /mnt/d/Project/Software/cellranger-10.0.0/cellranger \
-  --transcriptome /mnt/d/Project/Clonetracker/103951/data/refdata-gex-GRCh38-2024-A \
-  --bc14-file /mnt/d/Project/Clonetracker/103951/data/Cellecta-CloneTrackerXP-50M-BC14-LNGS-300-Library-Design.txt \
-  --bc30-file /mnt/d/Project/Clonetracker/103951/data/Cellecta-CloneTrackerXP-50M-BC30-LNGS-300-Library-Design.txt \
+  --transcriptome /mnt/d/Project/Clonetracker/CloneTracker_single_cell/data/refdata-gex-GRCh38-2024-A \
+  --bc14-file /mnt/d/Project/Clonetracker/CloneTracker_single_cell/Cellecta-CloneTrackerXP-50M-BC14-LNGS-300-Library-Design.txt \
+  --bc30-file /mnt/d/Project/Clonetracker/CloneTracker_single_cell/Cellecta-CloneTrackerXP-50M-BC30-LNGS-300-Library-Design.txt \
   --barcode-search-umi-cutoff 0 \
   --assignment-min-total-umi 3 \
   --assignment-min-top-umi 3
 ```
 
-For a WSL-first Docker launch, use [run_docker_wsl.sh](/mnt/d/Project/Clonetracker/CloneTracker_single_cell/scripts/run_docker_wsl.sh).
-
-The checked-in example sample sheet currently references only the `Control`
-dataset, because that is the data present under `data/` in this workspace.
+For a Docker wrapper from WSL, use
+[run_docker_wsl.sh](/mnt/d/Project/Clonetracker/CloneTracker_single_cell/scripts/run_docker_wsl.sh).
