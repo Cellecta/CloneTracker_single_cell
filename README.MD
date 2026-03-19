@@ -1,8 +1,42 @@
+<p align="center">
+  <img src="./logo_head.png" alt="Cellecta" width="100%">
+</p>
+
+<p align="center">
+  <img src="./logo.png" alt="Cellecta logo" width="260">
+</p>
+
 # Cellecta Single-Cell Pipeline
 
 This repository provides a customer-facing workspace for running Cellecta
 single-cell analysis workflows, with a current focus on CloneTracker barcode
 assignment, QC, and end-to-end processing from FASTQ inputs.
+
+CloneTracker is Cellecta's lentiviral barcode platform for labeling cells with
+stable, heritable, sequenceable barcodes so researchers can follow clonal
+behavior over time. For single-cell applications, CloneTracker XP libraries are
+designed so barcodes can be detected in RNA-seq workflows, making it possible
+to connect clonal identity with transcriptional state in single-cell studies.
+
+For 10x Chromium 3' workflows, CloneTracker XP barcodes are positioned farther
+upstream than the standard short 3' gene-expression read typically reaches. In
+practice, this means barcode recovery generally requires an additional targeted
+PCR amplification step using a barcode-specific primer before downstream
+library indexing and sequencing. This repository provides the downstream
+analysis workflow for processing those recovered single-cell CloneTracker
+barcode reads.
+
+Product information:
+
+- CloneTracker barcode libraries and kits:
+  https://cellecta.com/collections/clonetracker-barcode-libraries-and-kits
+- Example CloneTracker XP single-cell compatible library:
+  https://cellecta.com/products/clonetracker-xp-50m-barcode-3-library-with-rfp-puro
+- Cellecta manual section: 10x Chromium 3' Detection of Barcodes/sgRNA in
+  pScribe Libraries:
+  https://manuals.cellecta.com/crispr-pooled-lentiviral-sgrna-libraries/v3a/en/topic/10x-chromium-3-detection-of-barcodes-sgrna-in-pscribe-libraries
+- CloneTracker single-cell analysis workflow repository:
+  https://github.com/Cellecta/CloneTracker_single_cell
 
 ## What This Repository Supports
 
