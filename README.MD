@@ -2,10 +2,6 @@
   <img src="./logo_head.png" alt="Cellecta" width="100%">
 </p>
 
-<p align="center">
-  <img src="./logo.png" alt="Cellecta logo" width="260">
-</p>
-
 # Cellecta Single-Cell Pipeline
 
 This repository provides a customer-facing workspace for running Cellecta
