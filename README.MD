@@ -87,6 +87,30 @@ unless you override them explicitly:
 - `process_barcode_umis.py`
 - `assign_final_barcodes.py`
 
+## Why This Assignment Method
+
+This pipeline uses a conservative CloneTracker assignment strategy on purpose.
+For targeted single-cell CloneTracker or sgRNA libraries, an extra PCR
+enrichment step can recover multiple weak barcode-related signals, partial
+matches, or low-level background molecules in the same cell. Methods designed
+for more permissive feature detection can therefore overcall multiple barcodes
+per cell and produce assignments that are difficult to interpret biologically.
+
+The current workflow is designed to prioritize reliable per-cell barcode calls.
+It keeps one best sequence per cell+UMI, searches for supported barcode
+components, ranks barcode candidates by UMI support, and assigns a final
+barcode only when there is enough evidence for a confident call. This approach
+typically gives fewer but more interpretable assignments than permissive
+multi-feature calling and is better suited for CloneTracker and Cellecta-style
+targeted libraries.
+
+## Barcode Orientation
+
+Current barcode-orientation note:
+
+- The current pipeline is designed to reverse-complement the input BC14 and BC30 reference barcode sequences first during barcode matching and final assignment.
+- In practice, this means the barcode design files passed with `--bc14-file` and `--bc30-file` are currently interpreted through the pipeline's `--rc` path.
+
 For command details, see [docs/full_pipeline_usage.md](docs/full_pipeline_usage.md).
 
 ## Quick Start
