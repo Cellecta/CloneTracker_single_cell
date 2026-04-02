@@ -2,13 +2,15 @@
 # coding: utf-8
 
 import argparse
+import csv
 import os
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
 
 
 def reverse_complement_seq(seq):
@@ -17,47 +19,36 @@ def reverse_complement_seq(seq):
 
 
 def load_barcode_file(filename, reverse_complement=False):
-    data = pd.read_csv(filename, sep="\t").fillna("")
-
     seq_candidates = ["BC14 sequence", "BC30 sequence", "BC sequence"]
     id_candidates = ["#BC14 ID", "#BC30 ID", "BC14 ID", "BC30 ID", "BC ID"]
 
-    seq_col = next((c for c in seq_candidates if c in data.columns), None)
-    id_col = next((c for c in id_candidates if c in data.columns), None)
+    with open(filename, "r") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        fieldnames = reader.fieldnames or []
 
-    if seq_col is None:
-        raise ValueError(f"Cannot find barcode sequence column in {filename}")
+        seq_col = next((column for column in seq_candidates if column in fieldnames), None)
+        id_col = next((column for column in id_candidates if column in fieldnames), None)
 
-    if id_col is None:
-        raise ValueError(f"Cannot find barcode ID column in {filename}")
+        if seq_col is None:
+            raise ValueError("Cannot find barcode sequence column in {0}".format(filename))
 
-    sequences = data[seq_col].astype(str).str.strip()
-    ids = data[id_col].astype(str).str.strip()
+        if id_col is None:
+            raise ValueError("Cannot find barcode ID column in {0}".format(filename))
 
-    if reverse_complement:
-        sequences = sequences.apply(reverse_complement_seq)
-
-    return dict(zip(sequences, ids))
-
-
-def bc_type(bc14_str, bc30_str):
-    bc14 = str(bc14_str)
-    bc30 = str(bc30_str)
-
-    if bc14 in ["0", "", "NA"] and bc30 not in ["0", "", "NA"]:
-        return "bc30_only"
-
-    if bc30 in ["0", "", "NA"] and bc14 not in ["0", "", "NA"]:
-        return "bc14_only"
-
-    if bc14 in ["0", "", "NA"] and bc30 in ["0", "", "NA"]:
-        return "no_barcode"
-
-    return "bc14_bc30"
+        result = {}
+        for row in reader:
+            sequence = str(row.get(seq_col, "")).strip()
+            barcode_id = str(row.get(id_col, "")).strip()
+            if not sequence:
+                continue
+            if reverse_complement:
+                sequence = reverse_complement_seq(sequence)
+            result[sequence] = barcode_id
+    return result
 
 
-def is_missing(x):
-    return str(x) in ["0", "", "NA"]
+def is_missing(value):
+    return str(value).strip() in ["0", "", "NA"]
 
 
 def barcode_name(bc14_str, bc30_str, bc14_dict, bc30_dict, r2_seq):
@@ -70,13 +61,16 @@ def barcode_name(bc14_str, bc30_str, bc14_dict, bc30_dict, r2_seq):
     right = r2_seq[-30:] if len(r2_seq) >= 30 else r2_seq
 
     if not bc14_missing and not bc30_missing:
-        return f"{bc14_dict.get(bc14_str, bc14_str)}_{bc30_dict.get(bc30_str, bc30_str)}"
+        return "{0}_{1}".format(
+            bc14_dict.get(bc14_str, bc14_str),
+            bc30_dict.get(bc30_str, bc30_str),
+        )
 
     if bc14_missing and not bc30_missing:
-        return f"{left}_{bc30_dict.get(bc30_str, bc30_str)}"
+        return "{0}_{1}".format(left, bc30_dict.get(bc30_str, bc30_str))
 
     if bc30_missing and not bc14_missing:
-        return f"{bc14_dict.get(bc14_str, bc14_str)}_{right}"
+        return "{0}_{1}".format(bc14_dict.get(bc14_str, bc14_str), right)
 
     return "NA"
 
@@ -92,7 +86,7 @@ def final_assigned_barcode_func(barcode_list, umi_count_list, min_total_umi=3, m
         return "NA"
 
     valid_barcodes = [barcode for barcode in barcode_list if barcode != "NA"]
-    if len(valid_barcodes) == 0:
+    if not valid_barcodes:
         return "NA"
 
     if len(umi_count_list) == 1:
@@ -128,8 +122,13 @@ def final_barcode_distribution(bc_type_list, output_path):
     labels = list(counts.keys())
     sizes = list(counts.values())
 
-    barcode_stat = pd.DataFrame({"Type": labels, "Count": sizes})
-    barcode_stat.to_csv(output_path, sep="\t", index=False)
+    with open(output_path, "w") as handle:
+        handle.write("Type\tCount\n")
+        for label, size in zip(labels, sizes):
+            handle.write("{0}\t{1}\n".format(label, size))
+
+    if plt is None or not sizes:
+        return
 
     plt.figure(figsize=(10, 6))
     plt.pie(sizes, labels=labels, autopct="%1.1f%%", startangle=90)
@@ -140,102 +139,179 @@ def final_barcode_distribution(bc_type_list, output_path):
 
 
 def umi_distribution_pie(umi_list, output_path):
-    umi_list = [x for x in umi_list if pd.notna(x)]
+    umi_list = [value for value in umi_list if value is not None]
 
-    if not umi_list:
+    if plt is None or not umi_list:
         return
 
-    bins = np.arange(min(umi_list), max(umi_list) + 20, 20)
-    hist, bin_edges = np.histogram(umi_list, bins=bins)
+    min_umi = min(umi_list)
+    max_umi = max(umi_list)
+    start = (min_umi // 20) * 20
+    end = ((max_umi // 20) + 1) * 20
+    bucket_counts = Counter()
+    for value in umi_list:
+        bucket_start = ((value - start) // 20) * 20 + start
+        bucket_end = bucket_start + 20
+        bucket_counts[(bucket_start, bucket_end)] += 1
 
-    labels = [
-        f"{int(bin_edges[i])}-{int(bin_edges[i + 1])}"
-        for i in range(len(bin_edges) - 1)
+    nonzero = [
+        (count, bucket_start, bucket_end)
+        for (bucket_start, bucket_end), count in sorted(bucket_counts.items())
+        if count > 0
     ]
+    if not nonzero:
+        return
+
+    labels = ["{0}-{1}".format(int(start), int(end)) for _, start, end in nonzero]
+    sizes = [count for count, _, _ in nonzero]
 
     plt.figure(figsize=(10, 6))
-    plt.pie(hist, labels=labels, startangle=90)
+    plt.pie(sizes, labels=labels, startangle=90)
     plt.title("UMI Distribution")
     plt.tight_layout()
     plt.savefig(output_path, dpi=300)
     plt.close()
 
 
+def format_list(values):
+    if isinstance(values, list):
+        return ";".join(str(value) for value in values)
+    return "NA"
+
+
+def load_assignments(input_path, bc14_dict, bc30_dict):
+    grouped = defaultdict(list)
+
+    with open(input_path, "r") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        required_cols = ["cell", "umi", "bc14", "bc30", "R2_sequence"]
+        missing_cols = [column for column in required_cols if column not in (reader.fieldnames or [])]
+        if missing_cols:
+            raise ValueError("Missing columns: {0}".format(missing_cols))
+
+        for row in reader:
+            cell = str(row["cell"]).strip()
+            if not cell:
+                continue
+
+            umi = int(row["umi"])
+            bc14 = str(row["bc14"]).strip()
+            bc30 = str(row["bc30"]).strip()
+            r2_sequence = str(row["R2_sequence"]).strip()
+            grouped[cell].append(
+                (
+                    umi,
+                    barcode_name(bc14, bc30, bc14_dict, bc30_dict, r2_sequence),
+                )
+            )
+
+    return grouped
+
+
+def summarize_cells(grouped, min_total_umi, min_top_umi):
+    rows = []
+    for cell in sorted(grouped):
+        ranked = sorted(grouped[cell], key=lambda item: (-item[0], item[1]))
+        umi_values = [umi for umi, _barcode in ranked]
+        barcode_values = [barcode for _umi, barcode in ranked]
+        final_barcode = final_assigned_barcode_func(
+            barcode_values,
+            umi_values,
+            min_total_umi=min_total_umi,
+            min_top_umi=min_top_umi,
+        )
+        rows.append(
+            {
+                "cell": cell,
+                "barcode": barcode_values,
+                "umi": umi_values,
+                "final_assigned_barcode": final_barcode,
+                "umi_count": umi_values[0] if umi_values else 0,
+                "barcode_type": final_assigned_type(final_barcode),
+            }
+        )
+    return rows
+
+
+def write_debug_csv(rows, output_path):
+    with open(output_path, "w", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow([
+            "cell",
+            "barcode",
+            "umi",
+            "final_assigned_barcode",
+            "umi_count",
+            "barcode_type",
+        ])
+        for row in rows:
+            writer.writerow([
+                row["cell"],
+                format_list(row["barcode"]),
+                format_list(row["umi"]),
+                row["final_assigned_barcode"],
+                row["umi_count"],
+                row["barcode_type"],
+            ])
+
+
+def write_summary(rows, output_path):
+    with open(output_path, "w", newline="") as handle:
+        writer = csv.writer(handle, delimiter="\t")
+        writer.writerow(["cell", "final_assigned_barcode", "umi_count", "barcode_type"])
+        for row in rows:
+            writer.writerow([
+                row["cell"],
+                row["final_assigned_barcode"],
+                row["umi_count"],
+                row["barcode_type"],
+            ])
+
+
+def write_cell_barcode_table(rows, output_path):
+    with open(output_path, "w", newline="") as handle:
+        writer = csv.writer(handle, delimiter="\t")
+        writer.writerow([
+            "cell_barcode",
+            "clonetracker_barcodes",
+            "clonetracker_barcode_umis",
+        ])
+        for row in rows:
+            writer.writerow([
+                "{0}-1".format(row["cell"]),
+                format_list(row["barcode"]),
+                format_list(row["umi"]),
+            ])
+
+
 def main(args):
     if not os.path.exists(args.input):
         raise FileNotFoundError(args.input)
 
-    data = pd.read_csv(args.input, sep="\t").fillna("")
-
-    required_cols = ["cell", "umi", "bc14", "bc30", "R2_sequence"]
-    missing_cols = [column for column in required_cols if column not in data.columns]
-    if missing_cols:
-        raise ValueError(f"Missing columns: {missing_cols}")
-
     bc14_dict = load_barcode_file(args.bc14, reverse_complement=args.rc)
     bc30_dict = load_barcode_file(args.bc30, reverse_complement=args.rc)
 
-    data["bc_type"] = data.apply(lambda row: bc_type(row["bc14"], row["bc30"]), axis=1)
-
-    data_sorted = data.sort_values(by=["cell", "umi"], ascending=[True, False]).copy()
-    data_sorted["barcode_name"] = data_sorted.apply(
-        lambda row: barcode_name(
-            row["bc14"],
-            row["bc30"],
-            bc14_dict,
-            bc30_dict,
-            row["R2_sequence"],
-        ),
-        axis=1,
+    grouped = load_assignments(args.input, bc14_dict, bc30_dict)
+    rows = summarize_cells(
+        grouped,
+        min_total_umi=args.assignment_min_total_umi,
+        min_top_umi=args.assignment_min_top_umi,
     )
-
-    data_final = (
-        data_sorted.groupby("cell")
-        .agg({
-            "umi": list,
-            "barcode_name": list,
-        })
-        .reset_index()
-    )
-    data_final.rename(columns={"barcode_name": "barcode"}, inplace=True)
-
-    data_final["final_assigned_barcode"] = data_final.apply(
-        lambda row: final_assigned_barcode_func(
-            row["barcode"],
-            row["umi"],
-            min_total_umi=args.assignment_min_total_umi,
-            min_top_umi=args.assignment_min_top_umi,
-        ),
-        axis=1,
-    )
-
-    data_final["umi_count"] = data_final["umi"].apply(lambda values: values[0] if len(values) > 0 else 0)
-    data_final["barcode_type"] = data_final["final_assigned_barcode"].apply(final_assigned_type)
 
     if args.debug_csv:
-        data_final.to_csv(args.debug_csv, index=False)
+        write_debug_csv(rows, args.debug_csv)
 
-    final_barcode_distribution(data_final["barcode_type"], args.barcode_stat)
-    umi_distribution_pie(data_final["umi_count"].tolist(), args.umi_pie)
+    final_barcode_distribution(
+        [row["barcode_type"] for row in rows],
+        args.barcode_stat,
+    )
+    umi_distribution_pie(
+        [row["umi_count"] for row in rows],
+        args.umi_pie,
+    )
 
-    data_final[[
-        "cell",
-        "final_assigned_barcode",
-        "umi_count",
-        "barcode_type",
-    ]].to_csv(args.output, sep="\t", index=False)
-
-    def format_list(value):
-        if isinstance(value, list):
-            return ";".join(map(str, value))
-        return "NA"
-
-    cell_table = pd.DataFrame({
-        "cell_barcode": data_final["cell"].astype(str) + "-1",
-        "clonetracker_barcodes": data_final["barcode"].apply(format_list),
-        "clonetracker_barcode_umis": data_final["umi"].apply(format_list),
-    })
-    cell_table.to_csv(args.cell_barcode_table, sep="\t", index=False)
+    write_summary(rows, args.output)
+    write_cell_barcode_table(rows, args.cell_barcode_table)
 
     print("Analysis complete")
 
