@@ -9,6 +9,16 @@ uses them automatically unless you override the paths.
 The checked-in example CSVs currently reference the `Control` sample only,
 because that is the dataset available in the repository `data/` folder.
 
+## Barcode orientation note
+
+The current pipeline is designed to apply reverse-complement handling first to
+the input BC14 and BC30 reference barcode sequences during barcode matching
+and final assignment.
+
+This means the barcode design files supplied with `--bc14-file` and
+`--bc30-file` are currently used through the pipeline's reverse-complement
+path, rather than being matched only in their forward orientation.
+
 ## Installed CLI
 
 ```bash
