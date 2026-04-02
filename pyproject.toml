@@ -7,15 +7,15 @@ name = "cellecta-sc-pipeline"
 version = "0.1.0"
 description = "Customer-facing example pipelines for Cellecta CloneTracker barcode and CRISPR single-cell analysis."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 authors = [
   { name = "Cellecta" }
 ]
 dependencies = [
-  "matplotlib>=3.8,<4",
-  "numpy>=1.26,<3",
-  "pandas>=2.2,<3",
-  "scanpy>=1.10,<2",
+  "matplotlib>=3.5,<3.8",
+  "numpy>=1.23,<2",
+  "pandas>=1.5,<2.1",
+  "scanpy>=1.9,<1.10",
   "umi-tools>=1.1.5,<2",
 ]
 

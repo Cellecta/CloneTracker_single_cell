@@ -4,7 +4,7 @@ import csv
 import subprocess
 import sys
 from pathlib import Path
-from typing import Iterable
+from typing import Dict, Iterable, List, Optional
 
 
 SOURCE_REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -84,7 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def read_samples_csv(path: Path) -> list[dict]:
+def read_samples_csv(path):
     """Load and validate the required sample metadata used by downstream stages."""
     if not path.exists():
         raise FileNotFoundError(f"samples.csv not found: {path}")
@@ -106,13 +106,13 @@ def read_samples_csv(path: Path) -> list[dict]:
     return rows
 
 
-def require_existing_path(path: Path, description: str) -> None:
+def require_existing_path(path, description):
     """Raise a clear error when a required file or directory is missing."""
     if not path.exists():
         raise FileNotFoundError(f"{description} not found: {path}")
 
 
-def validate_pipeline_inputs(rows: list[dict], args: argparse.Namespace) -> None:
+def validate_pipeline_inputs(rows, args):
     """Check user-provided references and per-sample FASTQ directories up front."""
     require_existing_path(Path(args.transcriptome), "Transcriptome reference")
     require_existing_path(Path(args.bc14_file), "BC14 reference file")
@@ -132,7 +132,7 @@ def validate_pipeline_inputs(rows: list[dict], args: argparse.Namespace) -> None
         )
 
 
-def expected_cellranger_barcodes(pipeline_root: Path, sample: str) -> Path:
+def expected_cellranger_barcodes(pipeline_root, sample):
     """Return the filtered barcode whitelist expected from CellRanger count."""
     return (
         pipeline_root
@@ -144,7 +144,7 @@ def expected_cellranger_barcodes(pipeline_root: Path, sample: str) -> Path:
     )
 
 
-def validate_reused_cellranger_outputs(rows: list[dict], pipeline_root: Path) -> None:
+def validate_reused_cellranger_outputs(rows, pipeline_root):
     """Ensure reuse mode has the CellRanger outputs required downstream."""
     for row in rows:
         sample = row["sample"].strip()
@@ -154,7 +154,7 @@ def validate_reused_cellranger_outputs(rows: list[dict], pipeline_root: Path) ->
         )
 
 
-def validate_reused_clonetracker_outputs(rows: list[dict], pipeline_root: Path) -> Path:
+def validate_reused_clonetracker_outputs(rows, pipeline_root):
     """Ensure reuse mode has the CloneTracker outputs needed by QC."""
     clonetracker_root = pipeline_root / "clonetracker"
     for row in rows:
@@ -175,7 +175,7 @@ def command_to_text(cmd: Iterable[str]) -> str:
     return " ".join(str(part) for part in cmd)
 
 
-def run_command(cmd: list[str], *, cwd: Path | None = None, dry_run: bool = False) -> None:
+def run_command(cmd, cwd=None, dry_run=False):
     """Log and optionally execute a subprocess command."""
     print("\n[CMD] " + command_to_text(cmd), flush=True)
     if dry_run:
@@ -183,7 +183,7 @@ def run_command(cmd: list[str], *, cwd: Path | None = None, dry_run: bool = Fals
     subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
 
 
-def write_clonetracker_samples_csv(rows: list[dict], output_path: Path, cellranger_root: Path) -> None:
+def write_clonetracker_samples_csv(rows, output_path, cellranger_root):
     """Generate the sample sheet expected by the batch CloneTracker runner."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", newline="") as handle:
@@ -201,7 +201,7 @@ def write_clonetracker_samples_csv(rows: list[dict], output_path: Path, cellrang
             })
 
 
-def run_cellranger_for_sample(row: dict, args: argparse.Namespace, cellranger_root: Path) -> None:
+def run_cellranger_for_sample(row, args, cellranger_root):
     """Run `cellranger count` for one sample and verify the expected barcode output exists."""
     sample = row["sample"].strip()
     sample_id = f"{sample}_GEX"
@@ -224,7 +224,7 @@ def run_cellranger_for_sample(row: dict, args: argparse.Namespace, cellranger_ro
             raise FileNotFoundError(f"Expected CellRanger output not found: {expected}")
 
 
-def run_clonetracker(rows: list[dict], args: argparse.Namespace, pipeline_root: Path) -> Path:
+def run_clonetracker(rows, args, pipeline_root):
     """Run the batch CloneTracker assignment stage for all samples."""
     generated_csv = pipeline_root / "configs" / "generated_clonetracker_samples.csv"
     cellranger_root = pipeline_root / "cellranger"
@@ -253,7 +253,7 @@ def run_clonetracker(rows: list[dict], args: argparse.Namespace, pipeline_root: 
     return clonetracker_out
 
 
-def run_qc_for_sample(sample: str, args: argparse.Namespace, pipeline_root: Path, clonetracker_root: Path) -> None:
+def run_qc_for_sample(sample, args, pipeline_root, clonetracker_root):
     """Launch the downstream QC/reporting step for a single processed sample."""
     gex_outs = pipeline_root / "cellranger" / f"{sample}_GEX" / "outs"
     qc_out = pipeline_root / "analysis" / sample
@@ -285,7 +285,7 @@ def run_qc_for_sample(sample: str, args: argparse.Namespace, pipeline_root: Path
     run_command(cmd, cwd=Path.cwd(), dry_run=args.dry_run)
 
 
-def main() -> None:
+def main():
     """Coordinate CellRanger, CloneTracker, and QC stages for all requested samples."""
     args = build_parser().parse_args()
     pipeline_root = Path(args.pipeline_root)
