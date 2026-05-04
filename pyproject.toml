@@ -22,6 +22,7 @@ dependencies = [
 [project.scripts]
 cellecta-full-pipeline = "cellecta_sc_pipeline.pipelines.full_pipeline:main"
 cellecta-clonetracker-batch = "cellecta_sc_pipeline.pipelines.clonetracker.batch:main"
+cellecta-crispr-batch = "cellecta_sc_pipeline.pipelines.crispr.batch:main"
 cellecta-scrnaseq-qc = "cellecta_sc_pipeline.shared.scrnaseq_qc:main"
 
 [tool.setuptools]

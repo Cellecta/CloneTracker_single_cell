@@ -32,6 +32,8 @@ def resolve_local_helper(filename: str) -> Path:
 BEST_SEQUENCE_DEFAULT = resolve_local_helper("extract_best_umi_sequences.py")
 BARCODE_PROCESS_DEFAULT = resolve_local_helper("process_barcode_umis.py")
 FINAL_ASSIGNMENT_DEFAULT = resolve_local_helper("assign_final_barcodes.py")
+SGRNA_PROCESS_DEFAULT = resolve_local_helper("process_sgrna_umis.py")
+FINAL_SGRNA_DEFAULT = resolve_local_helper("assign_final_sgrnas.py")
 
 
 def local_tool_arg(parser: argparse.ArgumentParser, flag: str, default_path: Path, help_text: str) -> None:
@@ -45,6 +47,7 @@ def local_tool_arg(parser: argparse.ArgumentParser, flag: str, default_path: Pat
     parser.add_argument(flag, **kwargs)
 
 
+
 def build_parser() -> argparse.ArgumentParser:
     """Create the CLI for the end-to-end single-cell processing workflow."""
     parser = argparse.ArgumentParser(
@@ -52,15 +55,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--samples-csv", required=True, help="Sample sheet with per-sample FASTQ directories")
     parser.add_argument("--pipeline-root", required=True, help="Root output directory for the full pipeline run")
+    parser.add_argument("--mode", default="clonetracker", choices=["clonetracker", "sgrna"], help="Pipeline mode to run")
     parser.add_argument("--cellranger-bin", default="cellranger", help="Path to the cellranger executable")
     parser.add_argument("--transcriptome", required=True, help="CellRanger transcriptome reference")
     parser.add_argument("--create-bam", default="true", choices=["true", "false"], help="Pass through to cellranger count --create-bam")
     parser.add_argument("--include-introns", default="false", choices=["true", "false"], help="Pass through to cellranger count --include-introns")
-    parser.add_argument("--bc14-file", required=True, help="BC14 reference file")
-    parser.add_argument("--bc30-file", required=True, help="BC30 reference file")
+    parser.add_argument("--bc14-file", help="BC14 reference file (required for clonetracker mode)")
+    parser.add_argument("--bc30-file", help="BC30 reference file (required for clonetracker mode)")
+    parser.add_argument("--sgrna-file", help="sgRNA reference file (required for sgrna mode)")
+    parser.add_argument("--rc", action="store_true", help="Apply reverse and complementary transformation (required for sgRNA mode, default for clonetracker mode)")
     local_tool_arg(parser, "--best-sequence-umi-py", BEST_SEQUENCE_DEFAULT, "Path to extract_best_umi_sequences.py")
     local_tool_arg(parser, "--barcode-process-py", BARCODE_PROCESS_DEFAULT, "Path to process_barcode_umis.py")
     local_tool_arg(parser, "--final-assignment-py", FINAL_ASSIGNMENT_DEFAULT, "Path to assign_final_barcodes.py")
+    local_tool_arg(parser, "--sgrna-process-py", SGRNA_PROCESS_DEFAULT, "Path to process_sgrna_umis.py")
+    local_tool_arg(parser, "--final-sgrna-py", FINAL_SGRNA_DEFAULT, "Path to assign_final_sgrnas.py")
     parser.add_argument("--bc-pattern", default="CCCCCCCCCCCCCCCCNNNNNNNNNNNN", help="umi_tools extract barcode pattern")
     parser.add_argument(
         "--barcode-search-umi-cutoff",
@@ -115,8 +123,16 @@ def require_existing_path(path, description):
 def validate_pipeline_inputs(rows, args):
     """Check user-provided references and per-sample FASTQ directories up front."""
     require_existing_path(Path(args.transcriptome), "Transcriptome reference")
-    require_existing_path(Path(args.bc14_file), "BC14 reference file")
-    require_existing_path(Path(args.bc30_file), "BC30 reference file")
+    
+    if args.mode == "clonetracker":
+        if not args.bc14_file or not args.bc30_file:
+            raise ValueError("clonetracker mode requires --bc14-file and --bc30-file")
+        require_existing_path(Path(args.bc14_file), "BC14 reference file")
+        require_existing_path(Path(args.bc30_file), "BC30 reference file")
+    elif args.mode == "sgrna":
+        if not args.sgrna_file:
+            raise ValueError("sgrna mode requires --sgrna-file")
+        require_existing_path(Path(args.sgrna_file), "sgRNA reference file")
 
     if not args.skip_cellranger:
         cellranger_bin = Path(args.cellranger_bin)
@@ -154,20 +170,33 @@ def validate_reused_cellranger_outputs(rows, pipeline_root):
         )
 
 
-def validate_reused_clonetracker_outputs(rows, pipeline_root):
-    """Ensure reuse mode has the CloneTracker outputs needed by QC."""
-    clonetracker_root = pipeline_root / "clonetracker"
-    for row in rows:
-        sample = row["sample"].strip()
-        require_existing_path(
-            clonetracker_root / sample / f"{sample}_barcode_assignment_summary.tsv",
-            f"[{sample}] existing CloneTracker summary for --skip-clonetracker",
-        )
-        require_existing_path(
-            clonetracker_root / sample / f"{sample}_cell_clonetracker_barcode_table.tsv",
-            f"[{sample}] existing CloneTracker barcode table for --skip-clonetracker",
-        )
-    return clonetracker_root
+def validate_reused_clonetracker_outputs(rows, pipeline_root, mode):
+    """Ensure reuse mode has the outputs needed by QC."""
+    if mode == "clonetracker":
+        target_root = pipeline_root / "clonetracker"
+        for row in rows:
+            sample = row["sample"].strip()
+            require_existing_path(
+                target_root / sample / f"{sample}_barcode_assignment_summary.tsv",
+                f"[{sample}] existing CloneTracker summary for --skip-clonetracker",
+            )
+            require_existing_path(
+                target_root / sample / f"{sample}_cell_clonetracker_barcode_table.tsv",
+                f"[{sample}] existing CloneTracker barcode table for --skip-clonetracker",
+            )
+    elif mode == "sgrna":
+        target_root = pipeline_root / "sgrna"
+        for row in rows:
+            sample = row["sample"].strip()
+            require_existing_path(
+                target_root / sample / f"{sample}_sgrna_assignment_summary.tsv",
+                f"[{sample}] existing sgRNA summary for --skip-clonetracker",
+            )
+            require_existing_path(
+                target_root / sample / f"{sample}_cell_sgrna_table.tsv",
+                f"[{sample}] existing sgRNA table for --skip-clonetracker",
+            )
+    return target_root
 
 
 def command_to_text(cmd: Iterable[str]) -> str:
@@ -224,48 +253,78 @@ def run_cellranger_for_sample(row, args, cellranger_root):
             raise FileNotFoundError(f"Expected CellRanger output not found: {expected}")
 
 
-def run_clonetracker(rows, args, pipeline_root):
-    """Run the batch CloneTracker assignment stage for all samples."""
-    generated_csv = pipeline_root / "configs" / "generated_clonetracker_samples.csv"
-    cellranger_root = pipeline_root / "cellranger"
-    write_clonetracker_samples_csv(rows, generated_csv, cellranger_root)
+def run_assignment_batch(rows, args, pipeline_root):
+    """Run the batch assignment stage for all samples."""
+    if args.mode == "clonetracker":
+        generated_csv = pipeline_root / "configs" / "generated_clonetracker_samples.csv"
+        cellranger_root = pipeline_root / "cellranger"
+        write_clonetracker_samples_csv(rows, generated_csv, cellranger_root)
 
-    clonetracker_out = pipeline_root / "clonetracker"
-    cmd = [
-        sys.executable,
-        "-m",
-        "cellecta_sc_pipeline.pipelines.clonetracker.batch",
-        "--samples_csv", str(generated_csv),
-        "--out_root", str(clonetracker_out),
-        "--bc14_file", str(args.bc14_file),
-        "--bc30_file", str(args.bc30_file),
-        "--best_sequence_umi_py", str(args.best_sequence_umi_py),
-        "--barcode_process_py", str(args.barcode_process_py),
-        "--final_assignment_py", str(args.final_assignment_py),
-        "--bc_pattern", str(args.bc_pattern),
-        "--barcode_search_umi_cutoff", str(args.barcode_search_umi_cutoff),
-        "--assignment_min_total_umi", str(args.assignment_min_total_umi),
-        "--assignment_min_top_umi", str(args.assignment_min_top_umi),
-    ]
+        target_out = pipeline_root / "clonetracker"
+        cmd = [
+            sys.executable,
+            "-m",
+            "cellecta_sc_pipeline.pipelines.clonetracker.batch",
+            "--samples_csv", str(generated_csv),
+            "--out_root", str(target_out),
+            "--bc14_file", str(args.bc14_file),
+            "--bc30_file", str(args.bc30_file),
+            "--best_sequence_umi_py", str(args.best_sequence_umi_py),
+            "--barcode_process_py", str(args.barcode_process_py),
+            "--final_assignment_py", str(args.final_assignment_py),
+            "--bc_pattern", str(args.bc_pattern),
+            "--barcode_search_umi_cutoff", str(args.barcode_search_umi_cutoff),
+            "--assignment_min_total_umi", str(args.assignment_min_total_umi),
+            "--assignment_min_top_umi", str(args.assignment_min_top_umi),
+        ]
+    elif args.mode == "sgrna":
+        generated_csv = pipeline_root / "configs" / "generated_sgrna_samples.csv"
+        cellranger_root = pipeline_root / "cellranger"
+        write_clonetracker_samples_csv(rows, generated_csv, cellranger_root)
+
+        target_out = pipeline_root / "sgrna"
+        cmd = [
+            sys.executable,
+            "-m",
+            "cellecta_sc_pipeline.pipelines.crispr.batch",
+            "--samples_csv", str(generated_csv),
+            "--out_root", str(target_out),
+            "--sgrna_file", str(args.sgrna_file),
+            "--best_sequence_umi_py", str(args.best_sequence_umi_py),
+            "--sgrna_process_py", str(args.sgrna_process_py),
+            "--final_assignment_py", str(args.final_sgrna_py),
+            "--bc_pattern", str(args.bc_pattern),
+            "--sgrna_search_umi_cutoff", str(args.barcode_search_umi_cutoff),
+            "--assignment_min_total_umi", str(args.assignment_min_total_umi),
+            "--assignment_min_top_umi", str(args.assignment_min_top_umi),
+        ]
+        if args.rc:
+            cmd.append("--rc")
+
     if args.force:
         cmd.append("--force")
     run_command(cmd, cwd=Path.cwd(), dry_run=args.dry_run)
-    return clonetracker_out
+    return target_out
 
 
-def run_qc_for_sample(sample, args, pipeline_root, clonetracker_root):
+def run_qc_for_sample(sample, args, pipeline_root, assignment_root):
     """Launch the downstream QC/reporting step for a single processed sample."""
     gex_outs = pipeline_root / "cellranger" / f"{sample}_GEX" / "outs"
     qc_out = pipeline_root / "analysis" / sample
-    summary_path = clonetracker_root / sample / f"{sample}_barcode_assignment_summary.tsv"
-    cell_barcode_table_path = clonetracker_root / sample / f"{sample}_cell_clonetracker_barcode_table.tsv"
+    
+    if args.mode == "clonetracker":
+        summary_path = assignment_root / sample / f"{sample}_barcode_assignment_summary.tsv"
+        cell_barcode_table_path = assignment_root / sample / f"{sample}_cell_clonetracker_barcode_table.tsv"
+    elif args.mode == "sgrna":
+        summary_path = assignment_root / sample / f"{sample}_sgrna_assignment_summary.tsv"
+        cell_barcode_table_path = assignment_root / sample / f"{sample}_cell_sgrna_table.tsv"
 
     if not args.dry_run:
         require_existing_path(gex_outs, f"[{sample}] CellRanger outs directory for QC")
-        require_existing_path(summary_path, f"[{sample}] CloneTracker summary for QC")
+        require_existing_path(summary_path, f"[{sample}] Assignment summary for QC")
         require_existing_path(
             cell_barcode_table_path,
-            f"[{sample}] CloneTracker barcode table for QC",
+            f"[{sample}] Assignment barcode table for QC",
         )
 
     cmd = [
@@ -303,19 +362,19 @@ def main():
         validate_reused_cellranger_outputs(rows, pipeline_root)
 
     if args.skip_clonetracker:
-        clonetracker_root = (
-            pipeline_root / "clonetracker"
+        assignment_root = (
+            pipeline_root / args.mode
             if args.dry_run
-            else validate_reused_clonetracker_outputs(rows, pipeline_root)
+            else validate_reused_clonetracker_outputs(rows, pipeline_root, args.mode)
         )
     else:
-        # Second stage: assign CloneTracker barcodes using the CellRanger barcode whitelist.
-        clonetracker_root = run_clonetracker(rows, args, pipeline_root)
+        # Second stage: assign CloneTracker or sgRNA barcodes using the CellRanger barcode whitelist.
+        assignment_root = run_assignment_batch(rows, args, pipeline_root)
 
     if not args.skip_qc:
         # Final stage: combine expression outputs and barcode assignments into QC summaries.
         for row in rows:
-            run_qc_for_sample(row["sample"].strip(), args, pipeline_root, clonetracker_root)
+            run_qc_for_sample(row["sample"].strip(), args, pipeline_root, assignment_root)
 
     print("\nPipeline finished.")
     print(f"Pipeline root: {pipeline_root}")
