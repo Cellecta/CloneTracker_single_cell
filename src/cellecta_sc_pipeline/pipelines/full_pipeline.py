@@ -89,6 +89,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skip-qc", action="store_true", help="Skip final QC/report generation")
     parser.add_argument("--force", action="store_true", help="Force rerun of steps where supported")
     parser.add_argument("--dry-run", action="store_true", help="Print commands without executing them")
+    parser.add_argument("--localcores", type=int, help="Number of cores for cellranger (e.g. 64)")
+    parser.add_argument("--localmem", type=int, help="Memory for cellranger in GB (e.g. 128)")
     return parser
 
 
@@ -245,6 +247,11 @@ def run_cellranger_for_sample(row, args, cellranger_root):
         f"--create-bam={args.create_bam}",
         f"--include-introns={args.include_introns}",
     ]
+    if args.localcores:
+        cmd.append(f"--localcores={args.localcores}")
+    if args.localmem:
+        cmd.append(f"--localmem={args.localmem}")
+
     run_command(cmd, cwd=cellranger_root, dry_run=args.dry_run)
 
     if not args.dry_run:
