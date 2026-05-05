@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import csv
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -211,7 +212,16 @@ def run_command(cmd, cwd=None, dry_run=False):
     print("\n[CMD] " + command_to_text(cmd), flush=True)
     if dry_run:
         return
-    subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
+
+    # Ensure the src directory is in PYTHONPATH so internal modules can be found
+    env = os.environ.copy()
+    src_path = str(SOURCE_REPO_ROOT / "src")
+    if "PYTHONPATH" in env:
+        env["PYTHONPATH"] = f"{src_path}:{env['PYTHONPATH']}"
+    else:
+        env["PYTHONPATH"] = src_path
+
+    subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True, env=env)
 
 
 def write_clonetracker_samples_csv(rows, output_path, cellranger_root):
