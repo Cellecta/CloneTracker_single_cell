@@ -9,6 +9,11 @@ try:
     import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
+
+    # Compatibility fix for Numpy 1.24+ and older Numba
+    if not hasattr(np, 'long'):
+        np.long = int
+
     import scanpy as sc
 except ModuleNotFoundError as exc:
     plt = None
