@@ -120,7 +120,7 @@ def plot_qc_violin(adata, outdir: Path, sample: str) -> None:
     plt.close()
 
 
-def plot_clonetracker_types(adata, outdir: Path, sample: str) -> None:
+def plot_clonetracker_types(adata, outdir: Path, sample: str, mode: str = "clonetracker") -> None:
     counts = adata.obs["clonetracker_barcode_type"].value_counts()
     plt.figure(figsize=(10, 6))
     counts.plot(kind="bar", color=CELLECTA_GREEN, edgecolor="black")
@@ -128,7 +128,9 @@ def plot_clonetracker_types(adata, outdir: Path, sample: str) -> None:
     plt.xticks(rotation=30, ha="right")
     plt.grid(axis="y", color=CELLECTA_GRID)
     plt.tight_layout()
-    plt.savefig(outdir / f"{sample}.clonetracker_barcode_type_barplot.png", dpi=150)
+    
+    suffix = "sgrna_type_barplot.png" if mode == "sgrna" else "clonetracker_barcode_type_barplot.png"
+    plt.savefig(outdir / f"{sample}.{suffix}", dpi=150)
     plt.close()
 
 
@@ -150,14 +152,18 @@ def plot_clone_size_distribution(adata, outdir: Path, sample: str, mode: str = "
     feature_label = "sgRNA" if mode == "sgrna" else "Clone_barcode"
     table.columns = [feature_label, "Cell_count"]
     table["Fraction_of_total_cells"] = table["Cell_count"] / total_cells
-    table.to_csv(outdir / f"{sample}.clone_size_top50.tsv", sep="\t", index=False)
+    
+    table_suffix = "sgrna_size_top50.tsv" if mode == "sgrna" else "clone_size_top50.tsv"
+    plot_suffix = "sgrna_size_top50.png" if mode == "sgrna" else "clone_size_top50.png"
+    
+    table.to_csv(outdir / f"{sample}.{table_suffix}", sep="\t", index=False)
 
     plt.figure(figsize=(12, 5))
     top50.plot(kind="bar", color=CELLECTA_GREEN)
     plt.ylabel("Cells")
     plt.grid(axis="y", color=CELLECTA_GRID)
     plt.tight_layout()
-    plt.savefig(outdir / f"{sample}.clone_size_top50.png", dpi=150)
+    plt.savefig(outdir / f"{sample}.{plot_suffix}", dpi=150)
     plt.close()
 
     return table
@@ -250,8 +256,12 @@ def embed_png(path: Path) -> str:
 def write_html(sample: str, outdir: Path, summary: dict, clone_table, args) -> None:
     mode = args.mode
     violin = embed_png(outdir / f"{sample}.qc_violin.png")
-    typebar = embed_png(outdir / f"{sample}.clonetracker_barcode_type_barplot.png")
-    clones = embed_png(outdir / f"{sample}.clone_size_top50.png")
+    
+    typebar_suffix = "sgrna_type_barplot.png" if mode == "sgrna" else "clonetracker_barcode_type_barplot.png"
+    clones_suffix = "sgrna_size_top50.png" if mode == "sgrna" else "clone_size_top50.png"
+    
+    typebar = embed_png(outdir / f"{sample}.{typebar_suffix}")
+    clones = embed_png(outdir / f"{sample}.{clones_suffix}")
 
     feature_name = "sgRNA" if mode == "sgrna" else "CloneTracker Barcode"
     report_title = f"Cellecta {feature_name} Assignment and QC Report"
@@ -471,9 +481,18 @@ Single Cell Dataset Analysis
     (outdir / f"{sample}.QC_report.html").write_text(html)
 
 
-def write_readme(outdir: Path, sample: str) -> None:
+def write_readme(outdir: Path, sample: str, mode: str = "clonetracker") -> None:
+    obs_suffix = "sgrna_obs.tsv" if mode == "sgrna" else "clonetracker_obs.tsv"
+    table_suffix = "cell_sgrna_table.tsv" if mode == "sgrna" else "cell_clonetracker_barcode_table.tsv"
+    size_tsv = "sgrna_size_top50.tsv" if mode == "sgrna" else "clone_size_top50.tsv"
+    size_png = "sgrna_size_top50.png" if mode == "sgrna" else "clone_size_top50.png"
+    typebar = "sgrna_type_barplot.png" if mode == "sgrna" else "clonetracker_barcode_type_barplot.png"
+
     text = f"""
-Cellecta CloneTracker Barcode Assignment QC
+Cellecta Assignment QC
+----------------------
+Sample: {sample}
+Mode: {mode}
 
 Main report
 -----------
@@ -491,20 +510,20 @@ Filtered dataset
 ----------------
 {sample}.filtered.h5ad
 
-CloneTracker outputs
---------------------
-{sample}.clonetracker_obs.tsv: cell metadata with assignments
-{sample}.cell_clonetracker_barcode_table.tsv: barcode/sgRNA UMI table
+Assignment outputs
+------------------
+{sample}.{obs_suffix}: cell metadata with assignments
+{sample}.{table_suffix}: barcode/sgRNA UMI table
 
-Clone/sgRNA size analysis
--------------------
-{sample}.clone_size_top50.tsv
-{sample}.clone_size_top50.png
+Size analysis
+-------------
+{sample}.{size_tsv}
+{sample}.{size_png}
 
 QC figures
 ----------
 {sample}.qc_violin.png
-{sample}.clonetracker_barcode_type_barplot.png
+{sample}.{typebar}
 """
     (outdir / "README.txt").write_text(text)
 
@@ -559,15 +578,19 @@ def main() -> None:
             args.clonetracker_umi,
             "CloneTracker barcode UMI table",
         )
+        umi_table_suffix = "cell_sgrna_table.tsv" if args.mode == "sgrna" else "cell_clonetracker_barcode_table.tsv"
         shutil.copy2(
             clonetracker_umi,
-            output_dir / f"{sample}.cell_clonetracker_barcode_table.tsv",
+            output_dir / f"{sample}.{umi_table_suffix}",
         )
         adata = add_clonetracker(adata, clonetracker_summary, mode=args.mode)
+        
+        obs_suffix = "sgrna_obs.tsv" if args.mode == "sgrna" else "clonetracker_obs.tsv"
         adata.obs[
             [column for column in adata.obs.columns if column.startswith("clonetracker_")]
-        ].to_csv(output_dir / f"{sample}.clonetracker_obs.tsv", sep="\t")
-        plot_clonetracker_types(adata, output_dir, sample)
+        ].to_csv(output_dir / f"{sample}.{obs_suffix}", sep="\t")
+        
+        plot_clonetracker_types(adata, output_dir, sample, mode=args.mode)
         clone_table = plot_clone_size_distribution(adata, output_dir, sample, mode=args.mode)
 
     adata.write(output_dir / f"{sample}.filtered.h5ad")
@@ -588,7 +611,7 @@ def main() -> None:
     if clone_table is not None:
         write_html(sample, output_dir, summary, clone_table, args)
 
-    write_readme(output_dir, sample)
+    write_readme(output_dir, sample, mode=args.mode)
     print("QC finished")
 
 
