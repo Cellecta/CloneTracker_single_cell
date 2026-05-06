@@ -33,36 +33,61 @@ if plt is not None:
 
 
 METRIC_DESCRIPTIONS = {
-    "sample": "Sample identifier",
-    "cells_total": "Total number of cells before QC filtering",
-    "cells_final": "Number of cells remaining after QC filtering",
-    "median_counts": "Median UMI counts per cell",
-    "median_genes": "Median number of detected genes per cell",
-    "median_pct_mt": "Median percentage of mitochondrial transcripts",
-    "cells_one_barcode": "Cells with confident single CloneTracker barcode assignment",
-    "cells_multiple_barcodes": "Cells containing multiple CloneTracker barcodes",
-    "cells_undetermined_low_umi": (
-        "Cells without confident barcode assignment due to low UMI support"
-    ),
-    "cells_one_barcode_with_mutant": (
-        "Cells with one barcode assignment that contains partial or mutated sequence"
-    ),
-    "fraction_cells_with_one_barcode_assignment": (
-        "Fraction of filtered cells with confident single barcode assignment"
-    ),
-    "n_unique_clones": (
-        "Number of unique CloneTracker barcodes among single-barcode cells"
-    ),
+    "clonetracker": {
+        "sample": "Sample identifier",
+        "cells_total": "Total number of cells before QC filtering",
+        "cells_final": "Number of cells remaining after QC filtering",
+        "median_counts": "Median UMI counts per cell",
+        "median_genes": "Median number of detected genes per cell",
+        "median_pct_mt": "Median percentage of mitochondrial transcripts",
+        "cells_one_barcode": "Cells with confident single CloneTracker barcode assignment",
+        "cells_multiple_barcodes": "Cells containing multiple CloneTracker barcodes",
+        "cells_undetermined_low_umi": (
+            "Cells without confident barcode assignment due to low UMI support"
+        ),
+        "cells_one_barcode_with_mutant": (
+            "Cells with one barcode assignment that contains partial or mutated sequence"
+        ),
+        "fraction_cells_with_one_barcode_assignment": (
+            "Fraction of filtered cells with confident single barcode assignment"
+        ),
+        "n_unique_clones": (
+            "Number of unique CloneTracker barcodes among single-barcode cells"
+        ),
+    },
+    "sgrna": {
+        "sample": "Sample identifier",
+        "cells_total": "Total number of cells before QC filtering",
+        "cells_final": "Number of cells remaining after QC filtering",
+        "median_counts": "Median UMI counts per cell",
+        "median_genes": "Median number of detected genes per cell",
+        "median_pct_mt": "Median percentage of mitochondrial transcripts",
+        "cells_one_barcode": "Cells with confident single sgRNA assignment",
+        "cells_multiple_barcodes": "Cells containing multiple sgRNAs",
+        "cells_undetermined_low_umi": (
+            "Cells without confident sgRNA assignment due to low UMI support"
+        ),
+        "cells_one_barcode_with_mutant": (
+            "Cells with one sgRNA assignment that contains partial or mutated sequence"
+        ),
+        "fraction_cells_with_one_barcode_assignment": (
+            "Fraction of filtered cells with confident single sgRNA assignment"
+        ),
+        "n_unique_clones": (
+            "Number of unique sgRNAs among single-sgRNA cells"
+        ),
+    }
 }
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Cellecta CloneTracker single-cell QC pipeline"
+        description="Cellecta single-cell QC pipeline"
     )
     parser.add_argument("--input", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--sample-name")
+    parser.add_argument("--mode", default="clonetracker", choices=["clonetracker", "sgrna"])
     parser.add_argument("--min-genes", type=int, default=200)
     parser.add_argument("--max-genes", type=int, default=8000)
     parser.add_argument("--min-counts", type=int, default=500)
@@ -124,17 +149,23 @@ def plot_clonetracker_types(adata, outdir: Path, sample: str) -> None:
     plt.close()
 
 
-def plot_clone_size_distribution(adata, outdir: Path, sample: str):
+def plot_clone_size_distribution(adata, outdir: Path, sample: str, mode: str = "clonetracker"):
     total_cells = adata.n_obs
-    mask = adata.obs["clonetracker_barcode_type"].isin(
-        ["One Barcode", "One Barcode with mutant"]
-    )
+    if mode == "sgrna":
+        mask = adata.obs["clonetracker_barcode_type"].isin(
+            ["One sgRNA"]
+        )
+    else:
+        mask = adata.obs["clonetracker_barcode_type"].isin(
+            ["One Barcode", "One Barcode with mutant"]
+        )
     assigned = adata.obs.loc[mask, "clonetracker_final_barcode"].dropna()
     clone_sizes = assigned.value_counts()
     top50 = clone_sizes.head(50)
 
     table = top50.reset_index()
-    table.columns = ["Clone_barcode", "Cell_count"]
+    feature_label = "sgRNA" if mode == "sgrna" else "Clone_barcode"
+    table.columns = [feature_label, "Cell_count"]
     table["Fraction_of_total_cells"] = table["Cell_count"] / total_cells
     table.to_csv(outdir / f"{sample}.clone_size_top50.tsv", sep="\t", index=False)
 
@@ -149,16 +180,23 @@ def plot_clone_size_distribution(adata, outdir: Path, sample: str):
     return table
 
 
-def add_clonetracker(adata, summary_file: Path):
+def add_clonetracker(adata, summary_file: Path, mode: str = "clonetracker"):
     adata.obs["cell_nosuffix"] = adata.obs_names.str.replace(r"-\d+$", "", regex=True)
 
-    summary = pd.read_csv(summary_file, sep="\t").rename(
-        columns={
+    if mode == "sgrna":
+        rename_map = {
+            "final_assigned_sgrna": "clonetracker_final_barcode",
+            "umi_count": "clonetracker_umi_count",
+            "sgrna_type": "clonetracker_barcode_type",
+        }
+    else:
+        rename_map = {
             "final_assigned_barcode": "clonetracker_final_barcode",
             "umi_count": "clonetracker_umi_count",
             "barcode_type": "clonetracker_barcode_type",
         }
-    )
+
+    summary = pd.read_csv(summary_file, sep="\t").rename(columns=rename_map)
     summary = summary.set_index("cell")
 
     adata.obs["clonetracker_final_barcode"] = adata.obs["cell_nosuffix"].map(
@@ -178,20 +216,33 @@ def add_clonetracker(adata, summary_file: Path):
     return adata
 
 
-def compute_clone_stats(adata) -> dict:
+def compute_clone_stats(adata, mode: str = "clonetracker") -> dict:
     obs = adata.obs
     total_cells = len(obs)
     type_counts = obs["clonetracker_barcode_type"].value_counts()
 
-    one = type_counts.get("One Barcode", 0)
-    multi = type_counts.get("multi_barcode", 0)
-    undetermined = type_counts.get("Undetermined due to low UMI", 0)
-    one_mutant = type_counts.get("One Barcode with mutant", 0)
+    if mode == "sgrna":
+        one = type_counts.get("One sgRNA", 0)
+        multi = type_counts.get("multi_sgrna", 0)
+        undetermined = type_counts.get("Undetermined due to low UMI", 0)
+        one_mutant = 0 # Not applicable for sgRNA usually
+    else:
+        one = type_counts.get("One Barcode", 0)
+        multi = type_counts.get("multi_barcode", 0)
+        undetermined = type_counts.get("Undetermined due to low UMI", 0)
+        one_mutant = type_counts.get("One Barcode with mutant", 0)
 
-    assigned = obs.loc[
-        obs["clonetracker_barcode_type"] == "One Barcode",
-        "clonetracker_final_barcode",
-    ]
+    assigned_col = "clonetracker_final_barcode"
+    if mode == "sgrna":
+        assigned = obs.loc[
+            obs["clonetracker_barcode_type"] == "One sgRNA",
+            assigned_col,
+        ]
+    else:
+        assigned = obs.loc[
+            obs["clonetracker_barcode_type"] == "One Barcode",
+            assigned_col,
+        ]
 
     return {
         "cells_one_barcode": int(one),
@@ -214,11 +265,16 @@ def embed_png(path: Path) -> str:
 
 
 def write_html(sample: str, outdir: Path, summary: dict, clone_table, args) -> None:
+    mode = args.mode
     violin = embed_png(outdir / f"{sample}.qc_violin.png")
     typebar = embed_png(outdir / f"{sample}.clonetracker_barcode_type_barplot.png")
     clones = embed_png(outdir / f"{sample}.clone_size_top50.png")
 
+    feature_name = "sgRNA" if mode == "sgrna" else "CloneTracker Barcode"
+    report_title = f"Cellecta {feature_name} Assignment and QC Report"
+
     rows = []
+    descriptions = METRIC_DESCRIPTIONS.get(mode, METRIC_DESCRIPTIONS["clonetracker"])
     for metric, value in summary.items():
         if isinstance(value, float):
             value = f"{value:.4f}"
@@ -226,7 +282,7 @@ def write_html(sample: str, outdir: Path, summary: dict, clone_table, args) -> N
             {
                 "Metric": metric,
                 "Value": value,
-                "Description": METRIC_DESCRIPTIONS.get(metric, ""),
+                "Description": descriptions.get(metric, ""),
             }
         )
     summary_table = pd.DataFrame(rows).to_html(index=False)
@@ -250,7 +306,37 @@ Cells not meeting these thresholds were removed prior to downstream analysis.
 </div>
 """
 
-    barcode_definition_text = """
+    if mode == "sgrna":
+        barcode_definition_text = """
+<div class="info-panel">
+
+<b>sgRNA assignment</b><br><br>
+
+sgRNAs were assigned to cells based on UMI support from detected sgRNA sequences.
+
+Assignment categories:
+
+<ul>
+
+<li><b>One sgRNA</b><br>
+A single sgRNA dominates the UMI counts within a cell
+(top sgRNA >= 50% of total sgRNA UMIs and top UMI >= 3).</li>
+
+<li><b>multi_sgrna</b><br>
+Two sgRNAs have similar support within a cell
+(second sgRNA UMI >= 70% of the top sgRNA UMI),
+suggesting possible sgRNA collision or multiplet.</li>
+
+<li><b>Undetermined due to low UMI</b><br>
+Cells lacking sufficient UMI evidence for confident sgRNA assignment
+(total sgRNA UMIs < 3 or top sgRNA UMI < 3).</li>
+
+</ul>
+
+</div>
+"""
+    else:
+        barcode_definition_text = """
 <div class="info-panel">
 
 <b>CloneTracker barcode assignment</b><br><br>
@@ -292,7 +378,7 @@ Cells lacking sufficient UMI evidence for confident barcode assignment
 
 <head>
 
-<title>Cellecta CloneTracker Barcode Assignment and QC Report</title>
+<title>{report_title}</title>
 
 <style>
 
@@ -349,7 +435,7 @@ margin-top: 30px;
 
 <div class="header-banner">
 
-<h1>Cellecta CloneTracker Barcode Assignment and QC Report</h1>
+<h1>{report_title}</h1>
 
 Single Cell Dataset Analysis
 
@@ -370,7 +456,7 @@ Single Cell Dataset Analysis
 
 {summary_table}
 
-<h2>CloneTracker Barcode Assignment</h2>
+<h2>{feature_name} Assignment</h2>
 
 {barcode_definition_text}
 
@@ -378,15 +464,15 @@ Single Cell Dataset Analysis
 
 {violin}
 
-<h2>CloneTracker Barcode Types</h2>
+<h2>{feature_name} Types</h2>
 
 {typebar}
 
-<h2>Clone Size Distribution</h2>
+<h2>{feature_name} Size Distribution</h2>
 
 {clones}
 
-<h2>Top 50 Clone Table</h2>
+<h2>Top 50 {feature_name} Table</h2>
 
 {clone_table_html}
 
@@ -419,10 +505,10 @@ Filtered dataset
 
 CloneTracker outputs
 --------------------
-{sample}.clonetracker_obs.tsv: cell metadata with CloneTracker assignments
-{sample}.cell_clonetracker_barcode_table.tsv: CloneTracker barcode UMI table
+{sample}.clonetracker_obs.tsv: cell metadata with assignments
+{sample}.cell_clonetracker_barcode_table.tsv: barcode/sgRNA UMI table
 
-Clone size analysis
+Clone/sgRNA size analysis
 -------------------
 {sample}.clone_size_top50.tsv
 {sample}.clone_size_top50.png
@@ -489,12 +575,12 @@ def main() -> None:
             clonetracker_umi,
             output_dir / f"{sample}.cell_clonetracker_barcode_table.tsv",
         )
-        adata = add_clonetracker(adata, clonetracker_summary)
+        adata = add_clonetracker(adata, clonetracker_summary, mode=args.mode)
         adata.obs[
             [column for column in adata.obs.columns if column.startswith("clonetracker_")]
         ].to_csv(output_dir / f"{sample}.clonetracker_obs.tsv", sep="\t")
         plot_clonetracker_types(adata, output_dir, sample)
-        clone_table = plot_clone_size_distribution(adata, output_dir, sample)
+        clone_table = plot_clone_size_distribution(adata, output_dir, sample, mode=args.mode)
 
     adata.write(output_dir / f"{sample}.filtered.h5ad")
 
@@ -507,7 +593,7 @@ def main() -> None:
         "median_pct_mt": float(np.median(adata.obs["pct_counts_mt"])),
     }
     if "clonetracker_barcode_type" in adata.obs:
-        summary.update(compute_clone_stats(adata))
+        summary.update(compute_clone_stats(adata, mode=args.mode))
 
     pd.DataFrame([summary]).to_csv(output_dir / "qc_summary.tsv", sep="\t", index=False)
 

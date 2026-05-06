@@ -357,6 +357,7 @@ def run_qc_for_sample(sample, args, pipeline_root, assignment_root):
         "--max-mt-pct", str(args.max_mt_pct),
         "--clonetracker-summary", str(summary_path),
         "--clonetracker-umi", str(cell_barcode_table_path),
+        "--mode", args.mode,
     ]
     run_command(cmd, cwd=Path.cwd(), dry_run=args.dry_run)
 
