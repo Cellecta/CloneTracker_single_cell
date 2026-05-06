@@ -32,50 +32,33 @@ if plt is not None:
     plt.rcParams["axes.prop_cycle"] = plt.cycler(color=[CELLECTA_GREEN])
 
 
-METRIC_DESCRIPTIONS = {
+METRIC_CONFIG = {
     "clonetracker": {
-        "sample": "Sample identifier",
-        "cells_total": "Total number of cells before QC filtering",
-        "cells_final": "Number of cells remaining after QC filtering",
-        "median_counts": "Median UMI counts per cell",
-        "median_genes": "Median number of detected genes per cell",
-        "median_pct_mt": "Median percentage of mitochondrial transcripts",
-        "cells_one_barcode": "Cells with confident single CloneTracker barcode assignment",
-        "cells_multiple_barcodes": "Cells containing multiple CloneTracker barcodes",
-        "cells_undetermined_low_umi": (
-            "Cells without confident barcode assignment due to low UMI support"
-        ),
-        "cells_one_barcode_with_mutant": (
-            "Cells with one barcode assignment that contains partial or mutated sequence"
-        ),
-        "fraction_cells_with_one_barcode_assignment": (
-            "Fraction of filtered cells with confident single barcode assignment"
-        ),
-        "n_unique_clones": (
-            "Number of unique CloneTracker barcodes among single-barcode cells"
-        ),
+        "sample": ("Sample", "Sample identifier"),
+        "cells_total": ("Total Cells", "Total number of cells before QC filtering"),
+        "cells_final": ("Final Cells (post-QC)", "Number of cells remaining after QC filtering"),
+        "median_counts": ("Median UMI Counts", "Median UMI counts per cell"),
+        "median_genes": ("Median Genes", "Median number of detected genes per cell"),
+        "median_pct_mt": ("Median % MT", "Median percentage of mitochondrial transcripts"),
+        "cells_one_barcode": ("Cells with One Barcode", "Cells with confident single CloneTracker barcode assignment"),
+        "cells_multiple_barcodes": ("Cells with Multiple Barcodes", "Cells containing multiple CloneTracker barcodes"),
+        "cells_undetermined_low_umi": ("Undetermined Cells (Low UMI)", "Cells without confident barcode assignment due to low UMI support"),
+        "cells_one_barcode_with_mutant": ("Cells with Mutant Barcode", "Cells with one barcode assignment that contains partial or mutated sequence"),
+        "fraction_cells_with_one_barcode_assignment": ("Fraction of Cells with Barcode", "Fraction of filtered cells with confident single barcode assignment"),
+        "n_unique_clones": ("Unique Clones", "Number of unique CloneTracker barcodes among single-barcode cells"),
     },
     "sgrna": {
-        "sample": "Sample identifier",
-        "cells_total": "Total number of cells before QC filtering",
-        "cells_final": "Number of cells remaining after QC filtering",
-        "median_counts": "Median UMI counts per cell",
-        "median_genes": "Median number of detected genes per cell",
-        "median_pct_mt": "Median percentage of mitochondrial transcripts",
-        "cells_one_barcode": "Cells with confident single sgRNA assignment",
-        "cells_multiple_barcodes": "Cells containing multiple sgRNAs",
-        "cells_undetermined_low_umi": (
-            "Cells without confident sgRNA assignment due to low UMI support"
-        ),
-        "cells_one_barcode_with_mutant": (
-            "Cells with one sgRNA assignment that contains partial or mutated sequence"
-        ),
-        "fraction_cells_with_one_barcode_assignment": (
-            "Fraction of filtered cells with confident single sgRNA assignment"
-        ),
-        "n_unique_clones": (
-            "Number of unique sgRNAs among single-sgRNA cells"
-        ),
+        "sample": ("Sample", "Sample identifier"),
+        "cells_total": ("Total Cells", "Total number of cells before QC filtering"),
+        "cells_final": ("Final Cells (post-QC)", "Number of cells remaining after QC filtering"),
+        "median_counts": ("Median UMI Counts", "Median UMI counts per cell"),
+        "median_genes": ("Median Genes", "Median number of detected genes per cell"),
+        "median_pct_mt": ("Median % MT", "Median percentage of mitochondrial transcripts"),
+        "cells_one_barcode": ("Cells with One sgRNA", "Cells with confident single sgRNA assignment"),
+        "cells_multiple_barcodes": ("Cells with Multiple sgRNAs", "Cells containing multiple sgRNAs"),
+        "cells_undetermined_low_umi": ("Undetermined Cells (Low UMI)", "Cells without confident sgRNA assignment due to low UMI support"),
+        "fraction_cells_with_one_barcode_assignment": ("Fraction of Cells with sgRNA", "Fraction of filtered cells with confident single sgRNA assignment"),
+        "n_unique_clones": ("Unique sgRNAs", "Number of unique sgRNAs among single-sgRNA cells"),
     }
 }
 
@@ -274,15 +257,20 @@ def write_html(sample: str, outdir: Path, summary: dict, clone_table, args) -> N
     report_title = f"Cellecta {feature_name} Assignment and QC Report"
 
     rows = []
-    descriptions = METRIC_DESCRIPTIONS.get(mode, METRIC_DESCRIPTIONS["clonetracker"])
+    config = METRIC_CONFIG.get(mode, METRIC_CONFIG["clonetracker"])
     for metric, value in summary.items():
+        if metric not in config:
+            continue
+            
+        friendly_name, description = config[metric]
+        
         if isinstance(value, float):
             value = f"{value:.4f}"
         rows.append(
             {
-                "Metric": metric,
+                "Metric": friendly_name,
                 "Value": value,
-                "Description": descriptions.get(metric, ""),
+                "Description": description,
             }
         )
     summary_table = pd.DataFrame(rows).to_html(index=False)
