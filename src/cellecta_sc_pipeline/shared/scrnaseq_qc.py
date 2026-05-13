@@ -4,6 +4,7 @@ import base64
 import shutil
 from datetime import datetime
 from pathlib import Path
+from typing import Union, Any
 
 try:
     import matplotlib.pyplot as plt
@@ -11,7 +12,7 @@ try:
     import pandas as pd
 
     # Compatibility fix for Numpy 1.24+ and older Numba
-    if not hasattr(np, 'long'):
+    if 'long' not in dir(np):
         np.long = int
 
     import scanpy as sc
@@ -93,7 +94,7 @@ def find_filtered_matrix_dir(input_dir: Path) -> Path:
     return matches[0]
 
 
-def require_existing_file(path: str | Path, description: str) -> Path:
+def require_existing_file(path: Union[str, Path], description: str) -> Path:
     """Normalize and validate a required file path."""
     resolved = Path(path)
     if not resolved.exists():
